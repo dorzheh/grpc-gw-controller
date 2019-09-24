@@ -1,0 +1,13 @@
+# Author  <dorzheho@cisco.com>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fullname" . }}-config
+  namespace: {{ include "namespace" . }}
+  labels:
+    app: {{ include "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  {{- (.Files.Glob "configs/*").AsConfig | nindent 2 }}

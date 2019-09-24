@@ -1,0 +1,843 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "appmanager.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/apps": {
+      "get": {
+        "summary": "GetApps shows appropriate information about running application",
+        "operationId": "GetApps",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Application name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "description": "Application version.\nIf omitted, controller will provide information about all running application instances.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "cycle",
+            "description": "Application type.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "root_group_id",
+            "description": "Root Group ID.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "group_ids",
+            "description": "A list of group IDs.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "verbose",
+            "description": "Printout a lot of information.",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      },
+      "delete": {
+        "summary": "DeleteApps deletes running applications and related workloads.\nIf \"purge\" flag is set True, the applications will be also removed from the catalog",
+        "operationId": "DeleteApps",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "purge",
+            "description": "Indicates whether all the apps should be also removed from catalog.",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      },
+      "post": {
+        "summary": "CreateApp method creates a new application.\nIt will create a new catalog entry and install the new application from the catalog.\nIf appropriate application instance with the same name and version already running,\nthe instance won't be overwritten and no error will be returned.The request will continue\nto the next instance.If all requested instances already running, the status \"UNCHANGED\" will be\nreturned to the caller. A list of created instances will be returned as part of the response body",
+        "operationId": "CreateApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerCreateAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      }
+    },
+    "/api/v1/apps/activation": {
+      "post": {
+        "summary": "EnableDisableApp disables or enables an application",
+        "operationId": "EnableDisableApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerEnableDisableAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      }
+    },
+    "/api/v1/apps/metadata/{app_name}": {
+      "delete": {
+        "summary": "DeleteAppMetadata deletes metadata for a particular application instance",
+        "operationId": "DeleteAppMetadata",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_name",
+            "description": "Application name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerDeleteAppMetadataRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      }
+    },
+    "/api/v1/apps/{name}": {
+      "delete": {
+        "summary": "DeleteApp deletes instances of a particular running application.\nIt's possible to customize the request by providing appropriate body",
+        "operationId": "DeleteApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Application name.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerDeleteAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      },
+      "put": {
+        "summary": "UpgradeApp creates new, upgrades or downgrades existing application.\nApplication will be recreated if the version in request is equal to the version of running application.\nIn this case the catalog artifact will be replaced with the new one the running application will be replaced\nwith recent application from the catalog.\nApplication will be upgraded if the version in request is higher than version of running application.In this case\na new catalog artifact will be created and the running application will be upgraded from the catalog.\nApplication will be downgraded if the version in request is lower than version of running application. In this case\na new catalog artifact will be created and the running application will be downgraded from the catalog",
+        "operationId": "UpgradeApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Application name.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerUpgradeAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      },
+      "patch": {
+        "summary": "UpdateApp updates existing application instances. The new application instance will be based on configuration\nof existing instance hence a minimal request can be sent to controller. If there is no application instance\nrunning, the method will return \"UNCHANGED\" status and message \"Nothing to update/upgrade\".\nThis method always recreates existing application instance",
+        "operationId": "UpdateApp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/appmanagerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Application name.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/appmanagerUpdateAppRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AppManager"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "CyclePeriodicReqAttrSched": {
+      "type": "object",
+      "properties": {
+        "Saturday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Sunday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Monday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Tuesday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Wednesday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Thursday": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "Friday": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "PortProto": {
+      "type": "string",
+      "enum": [
+        "TCP",
+        "UDP"
+      ],
+      "default": "TCP",
+      "description": "Protocol (\"TCP\" or \"UDP\")."
+    },
+    "SpecImage": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "Repository name."
+        },
+        "tag": {
+          "type": "string",
+          "description": "Image tag."
+        }
+      },
+      "description": "Image structure."
+    },
+    "appmanagerAppStateAfterDeployment": {
+      "type": "string",
+      "enum": [
+        "disabled",
+        "enabled"
+      ],
+      "default": "disabled",
+      "description": "- disabled: Enable application after deployment\n - enabled: Disable application after deployment",
+      "title": "Defines application instance state"
+    },
+    "appmanagerCreateAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Application name"
+        },
+        "app_state": {
+          "$ref": "#/definitions/appmanagerAppStateAfterDeployment",
+          "title": "Enable or disable the application after deployment. By default application disabled"
+        },
+        "version": {
+          "type": "string",
+          "title": "Upgrade existing application instance to the version exposed by the attribute"
+        },
+        "from_catalog": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Don't create a new metadata but use existing one. Installs directly from catalog"
+        },
+        "description": {
+          "type": "string",
+          "description": "Application description."
+        },
+        "cycle": {
+          "type": "string",
+          "title": "Application type. Supported types:\nperiodic - application of type \"CronJob\" will be created, will be scheduled according to\nthe CyclePeriodic configuration.\ndaemon - application of type \"Deployment\" will be created, will be running continuously\nrun_once - application of type \"Job\", will run once until success"
+        },
+        "cycle_periodic_attr": {
+          "$ref": "#/definitions/appmanagerCyclePeriodicReqAttr",
+          "title": "Cycle Periodic attributes"
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group ID"
+        },
+        "app_configs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application configurations"
+        },
+        "env_vars": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application environment variables"
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Secret objects"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Annotations"
+        },
+        "shared_storage": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Dependencies\nrepeated Dependency deps = 12;\nShared storage size"
+        },
+        "spec": {
+          "$ref": "#/definitions/appmanagerSpec",
+          "title": "Instance specifications"
+        }
+      },
+      "title": "CreateAppRequest holds appropriate properties required for a particular request\nrelated to a new application instance creation"
+    },
+    "appmanagerCyclePeriodicReqAttr": {
+      "type": "object",
+      "properties": {
+        "working_days": {
+          "$ref": "#/definitions/CyclePeriodicReqAttrSched"
+        },
+        "min_start_hour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "max_start_hour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "interval_min": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "title": "CyclePeriodicReqAttr message holds information for an application of type periodic"
+    },
+    "appmanagerDeleteAppMetadataRequest": {
+      "type": "object",
+      "properties": {
+        "app_name": {
+          "type": "string",
+          "title": "Application name"
+        },
+        "version": {
+          "type": "string",
+          "title": "Deletes only a particular version of application instance"
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group IDs"
+        }
+      },
+      "title": "DeleteAppMetadataRequest holds attributes required for deleting\nmetadata for appropriate application and related instances"
+    },
+    "appmanagerDeleteAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name."
+        },
+        "version": {
+          "type": "string",
+          "description": "Application version."
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group IDs"
+        },
+        "purge": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Indicates whether the app should be also removed from catalog"
+        }
+      },
+      "title": "DeleteAppRequest holds attributes required for deleting\nappropriate application and its related instances"
+    },
+    "appmanagerEnableDisableAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Application name"
+        },
+        "version": {
+          "type": "string",
+          "title": "Application version"
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group IDs"
+        },
+        "disable": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Enable or disable application instances"
+        }
+      },
+      "title": "EnableDisableAppRequest holds attributes required for disabling or enabling appropriate application instance"
+    },
+    "appmanagerResponse": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/definitions/appmanagerStatus"
+        },
+        "message": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "Response holds information related to a response message that is sent on appropriate request"
+    },
+    "appmanagerSpec": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/definitions/SpecImage"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/appmanagerSpecPort"
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/appmanagerSpecResources"
+        }
+      },
+      "title": "Specification message"
+    },
+    "appmanagerSpecPort": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port label."
+        },
+        "number": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Port number."
+        },
+        "proto": {
+          "$ref": "#/definitions/PortProto"
+        }
+      },
+      "title": "Network structure"
+    },
+    "appmanagerSpecResources": {
+      "type": "object",
+      "properties": {
+        "persistent_storage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "limits": {
+          "$ref": "#/definitions/appmanagerSpecResourcesLimits"
+        }
+      }
+    },
+    "appmanagerSpecResourcesLimits": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "cpu": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "appmanagerStatus": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "NOT_FOUND",
+        "UNCHANGED"
+      ],
+      "default": "SUCCESS",
+      "description": "Status represents operation status.\n\n - SUCCESS: Operation was successful\n - ERROR: Operation failed\n - NOT_FOUND: Resource not found\n - UNCHANGED: Operation had no results (e.g. upgrade identical, rollback to same, delete non-existent)"
+    },
+    "appmanagerUpdateAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name."
+        },
+        "app_state": {
+          "$ref": "#/definitions/appmanagerAppStateAfterDeployment",
+          "title": "Enable or disable the application after update. By default application is disabled"
+        },
+        "version": {
+          "type": "string",
+          "title": "Application version to upgrade to"
+        },
+        "from_catalog": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Don't create a new metadata but install application instance directly from catalog"
+        },
+        "description": {
+          "type": "string",
+          "title": "Application instance description"
+        },
+        "cycle": {
+          "type": "string",
+          "description": "Application type. Supported types:\nperiodic - application of type \"CronJob\" will be created, will be scheduled according to\nthe CyclePeriodic configuration\ndaemon - application of type \"Deployment\" will be created, will be running continuously\nrun_once - application of type \"Job\", will run once until success."
+        },
+        "cycle_periodic_attr": {
+          "$ref": "#/definitions/appmanagerCyclePeriodicReqAttr",
+          "title": "Cycle Periodic attributes"
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group ID"
+        },
+        "app_configs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application configuration"
+        },
+        "env_vars": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application environment variables"
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Secret objects"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Annotations"
+        },
+        "shared_storage": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Shared storage size"
+        },
+        "spec": {
+          "$ref": "#/definitions/appmanagerSpec",
+          "description": "Instance specifications."
+        }
+      },
+      "title": "UpdadeApp implements the logic of UpgradeApp but allows also to update currently running application\nWith the new configuration and if appropriate information is missed in the request, the information will\nbe obtained from one of running instances of a particular application"
+    },
+    "appmanagerUpgradeAppRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name."
+        },
+        "app_state": {
+          "$ref": "#/definitions/appmanagerAppStateAfterDeployment",
+          "title": "Enable or disable the application after upgrade. By default application disabled"
+        },
+        "version": {
+          "type": "string",
+          "title": "Application version to upgrade to"
+        },
+        "from_catalog": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Don't create a new metadata but install application instance directly from catalog"
+        },
+        "description": {
+          "type": "string",
+          "title": "Application instance description"
+        },
+        "cycle": {
+          "type": "string",
+          "title": "Application type. Supported types:\nperiodic - application of type \"CronJob\" will be created, will be scheduled according to\nthe CyclePeriodic configuration.\ndaemon - application of type \"Deployment\" will be created, will be running continuously\nrun_once - application of type \"Job\", will run once until success"
+        },
+        "cycle_periodic_attr": {
+          "$ref": "#/definitions/appmanagerCyclePeriodicReqAttr",
+          "title": "Cycle Periodic attributes"
+        },
+        "root_group_id": {
+          "type": "string",
+          "title": "Root Group ID"
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "A list of group ID"
+        },
+        "app_configs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application configuration"
+        },
+        "env_vars": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Application environment variables"
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Secret objects"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Annotations"
+        },
+        "shared_storage": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Shared storage size"
+        },
+        "spec": {
+          "$ref": "#/definitions/appmanagerSpec",
+          "title": "Instance specifications"
+        }
+      },
+      "title": "UpgradeAppRequest holds the attributes required for creating a new or upgrading existing application instance"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "Must be a valid serialized protocol buffer of the above specified type."
+        }
+      },
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := ptypes.MarshalAny(foo)\n     ...\n     foo := \u0026pb.Foo{}\n     if err := ptypes.UnmarshalAny(any, foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    }
+  }
+}

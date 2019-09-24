@@ -1,0 +1,256 @@
+// Author  <dorzheho@cisco.com>
+
+syntax = "proto3";
+option go_package = "clustermanager";
+package com.cisco.son.apphcd.api.v1.clustermanager;
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "github.com/envoyproxy/protoc-gen-validate/validate/validate.proto";
+import "google/protobuf/any.proto";
+
+
+// Status represents operation status
+enum Status {
+    // Operation was successful
+    SUCCESS = 0;
+    // Operation failed
+    ERROR = 1;
+    // Operation in progress
+    IN_PROGRESS = 2;
+}
+
+// Node state. We use lower case properties since
+// they are used as parameters in the API path.
+enum State {
+   // Schedulable, accepts new deployments
+   active = 0;
+   // Node is up and serving running applications however doesn't accepts new deployments
+   unschedulable = 1;
+   // Node doesn't run any workloads and doesn't accept new deployments
+   maintenance  = 2;
+}
+
+message Condition {
+  enum Status {
+     // Cluster level:
+     // - all nodes are running and schedulable
+     // Node level:
+     // - the node is schedulable
+     OK = 0;
+     // An error occurred at the cluster or node level
+     ERROR = 1;
+     // No error at the cluster or nodes level
+     // however the cluster node is either in unschedulable or maintenance state
+     WARNING = 2;
+  }
+   Status status = 1;
+   State  state = 2;
+   repeated string errors = 3;
+}
+
+message Cpu {
+      string total = 1;
+      string allocated = 2;
+}
+
+message Memory {
+      string total = 1;
+      string allocated = 2;
+      string free = 3;
+}
+
+message GetClusterInfoResponseBody {
+   string cluster_name = 1;
+   string id = 2;
+   string creation_date = 3;
+   Condition condition = 4;
+   Cpu cpu_cores = 5;
+   Memory memory = 6;
+   message UpgradeStatus {
+       google.protobuf.Timestamp last_upgrade = 1 [(validate.rules).timestamp.required = true];
+       string status = 2;
+       string error_message = 3;
+       message Component {
+         string name = 1;
+         string status = 2;
+         string error_message = 3;
+       }
+       repeated Component components = 4;
+   }
+   UpgradeStatus last_upgrade_status = 7;
+   string svc_monitor_url = 8;
+   message App {
+       string name = 1;
+       uint32 number_of_instances = 2;
+       bool active = 3;
+   }
+   message Workloads {
+     uint32 number_of_apps = 1;
+     uint32 number_of_instances = 2;
+     uint32 number_of_active_apps = 3;
+     uint32 number_of_active_instances = 4;
+     repeated App apps = 5;
+   }
+   Workloads workloads = 9;
+   uint32 number_of_nodes = 10;
+   message Node {
+       string hostname = 1;
+       string id = 2;
+       string external_ip = 3;
+       Condition condition = 4;
+       Cpu cpu_cores = 5;
+       Memory memory = 6;
+       message Storage {
+          string total = 1;
+          string used = 2;
+          string free = 3;
+       }
+       Storage local_storage = 7;
+       string monitor_url = 8;
+       bool master = 9;
+       bool worker = 10;
+       bool etcd = 11;
+   }
+   repeated Node nodes = 11;
+}
+
+
+message GetKubeConfigRequest {}
+
+message GetKubeConfigResponse {
+    string kubeconfig = 1;
+}
+
+message GetClusterInfoRequest {
+    string hostname = 1;
+}
+
+message UpgradeClusterRequest {}
+
+message Quota {
+    string namespace = 1 [(validate.rules).string.min_bytes = 1];
+    uint32 memory = 2 [(validate.rules).uint32.gt = 0];
+    double cpu = 3 [(validate.rules).double.gt = 0];
+}
+
+message SetClusterResourceQuotasRequest {
+     repeated Quota quotas = 1 [(validate.rules).repeated.min_items = 1];
+}
+
+message GetClusterResourceQuotasRequest {
+    repeated string namespaces = 1 [(validate.rules).repeated.min_items = 1];
+}
+
+message DeleteClusterResourceQuotasRequest {
+    string namespace = 1;
+}
+
+message SetGetClusterResourceQuotasResponseBody {
+    repeated Quota quotas = 1;
+}
+
+message CreateNodeRequest {
+    string hostname = 1;
+    bool master = 2;
+}
+
+message CreateNodeResponseBody {
+    string id = 1;
+    string hostname = 2;
+    bool master = 3;
+}
+
+message UpdateNodeStateRequest {
+    string hostname = 1;
+    State state = 2;
+}
+
+message UpdateNodesStateResponseBody {
+    string id = 1;
+    string hostname = 2;
+    State state = 3;
+}
+
+message DeleteNodeRequest {
+    string hostname = 1;
+}
+
+message DeleteNodeResponseBody {
+    string id = 1;
+    string hostname = 2;
+}
+
+
+// Response holds information related to a response message that is sent on appropriate request
+message Response {
+    google.protobuf.Timestamp timestamp = 1 [(validate.rules).timestamp.required = true];
+    Status status = 2;
+    string message = 3;
+    google.protobuf.Any body = 4;
+}
+
+
+// ClusterManager service
+service ClusterManager {
+    // Obtain Kubernetes cluster configuration
+    rpc GetKubeConfig (GetKubeConfigRequest) returns (GetKubeConfigResponse)  {}
+
+    // GetClusterInfo shows appropriate information about AppHoster cluster
+    rpc GetClusterInfo (GetClusterInfoRequest) returns (Response) {
+        option (google.api.http) = {
+           get: "/api/v1/apphoster"
+        };
+    }
+
+    // UpgradeCluster responsible for upgrading AppHoster cluster
+    rpc UpgradeCluster(UpgradeClusterRequest) returns (Response) {
+        option (google.api.http) = {
+           put: "/api/v1/apphoster"
+        };
+    }
+
+    // CreateNode scales out an AppHoster cluster
+    rpc CreateNode (CreateNodeRequest) returns (Response) {
+        option (google.api.http) = {
+           post: "/api/v1/apphoster/nodes"
+           body: "*"
+        };
+    }
+
+     // DeleteNode scales in an AppHoster cluster
+     rpc DeleteNode (DeleteNodeRequest) returns (Response) {
+         option (google.api.http) = {
+            delete: "/api/v1/apphoster/nodes/{hostname}"
+         };
+     }
+
+    // UpdateNodeState sets AppHoster node to appropriate state
+    rpc UpdateNodeState (UpdateNodeStateRequest) returns (Response) {
+        option (google.api.http) = {
+           post: "/api/v1/apphoster/nodes/{hostname}/state"
+           body: "*"
+        };
+    }
+
+    // SetClusterResourceQuotas responsible for applying resource quotas to appropriate namespaces
+    rpc SetClusterResourceQuotas(SetClusterResourceQuotasRequest) returns (Response) {
+        option (google.api.http) = {
+           post: "/api/v1/apphoster/quotas"
+           body: "*"
+        };
+    }
+
+    // GetClusterResourceQuotas responsible for fetching resource quotas information
+    rpc GetClusterResourceQuotas(GetClusterResourceQuotasRequest) returns (Response) {
+        option (google.api.http) = {
+           get: "/api/v1/apphoster/quotas"
+        };
+    }
+
+    // DeleteClusterResourceQuotas responsible for deleting a resource quota from appropriate namespace
+    rpc DeleteClusterResourceQuotas(DeleteClusterResourceQuotasRequest) returns (Response) {
+        option (google.api.http) = {
+           delete: "/api/v1/apphoster/quotas/{namespace}"
+        };
+    }
+}

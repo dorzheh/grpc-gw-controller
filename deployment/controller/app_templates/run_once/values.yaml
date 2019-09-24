@@ -1,0 +1,25 @@
+# image pulling policy
+pullPolicy: Always
+
+# default number of instances
+replicaCount: 1
+
+nodeSelector: {}
+
+affinity: {}
+
+# probe configuration parameters
+liveness:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  # necessary to disable liveness probe when setting breakpoints
+  # in debugger so K8s doesn't restart unresponsive container
+  enabled: false
+
+readiness:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  enabled: false
+
+ingress:
+  enabled: false

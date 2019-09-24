@@ -1,0 +1,17 @@
+{{- if eq .Values.configs.enabled true -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fullname" . }}-configmap
+  namespace: {{ include "namespace" . }}
+  annotations:
+    {{- range $key, $val := .Values.annotations }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+  labels:
+    {{- range $key, $val := .Values.labels }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+data:
+{{ tpl (.Files.Glob "resources/configs/*").AsConfig . | indent 2 }}
+{{- end -}}

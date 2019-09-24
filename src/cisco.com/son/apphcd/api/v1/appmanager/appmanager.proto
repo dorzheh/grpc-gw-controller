@@ -1,0 +1,541 @@
+// Author  <dorzheho@cisco.com>
+
+syntax = "proto3";
+option go_package = "appmanager";
+package com.cisco.son.apphcd.api.v1.appmanager;
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "github.com/envoyproxy/protoc-gen-validate/validate/validate.proto";
+import "google/protobuf/any.proto";
+
+// Defines application instance state
+enum AppStateAfterDeployment {
+    // Enable application after deployment
+    disabled = 0;
+    // Disable application after deployment
+    enabled = 1;
+}
+
+// CreateAppRequest holds appropriate properties required for a particular request
+// related to a new application instance creation
+message CreateAppRequest {
+    // Application name
+    string name = 1 [(validate.rules).string.min_bytes = 1];
+    // Enable or disable the application after deployment. By default application disabled
+    AppStateAfterDeployment app_state = 2;
+    // Upgrade existing application instance to the version exposed by the attribute
+    string version = 3 [(validate.rules).string.pattern = "^\\w*\\d+(\\.\\d)*$"];
+    // Don't create a new metadata but use existing one. Installs directly from catalog
+    bool from_catalog = 4;
+    // Application description.
+    string description = 5;
+    // Application type. Supported types:
+    // periodic - application of type "CronJob" will be created, will be scheduled according to
+    // the CyclePeriodic configuration.
+    // daemon - application of type "Deployment" will be created, will be running continuously
+    // run_once - application of type "Job", will run once until success
+    string cycle = 6 [(validate.rules).string = {in: ["periodic", "daemon", "run_once"]}];
+    // Cycle Periodic attributes
+    CyclePeriodicReqAttr cycle_periodic_attr = 7;
+    // Root Group ID
+    string root_group_id = 8;
+    // A list of group ID
+    repeated string group_ids = 9 [(validate.rules).repeated .min_items = 1];
+    // Application configurations
+    map<string,string> app_configs = 10;
+    // Application environment variables
+    map<string,string> env_vars = 11;
+    // Secret objects
+    map<string,string> secrets = 12;
+    // Labels
+    map<string,string> labels = 13;
+    // Annotations
+    map<string,string>  annotations = 14;
+    // Dependencies
+    //repeated Dependency deps = 12;
+    // Shared storage size
+    uint32 shared_storage = 15;
+    // Instance specifications
+    Spec spec = 16;
+}
+
+// UpgradeAppRequest holds the attributes required for creating a new or upgrading existing application instance
+message UpgradeAppRequest {
+    // Application name.
+    string name = 1 [(validate.rules).string.min_bytes = 1];
+    // Enable or disable the application after upgrade. By default application disabled
+    AppStateAfterDeployment app_state = 2;
+    // Application version to upgrade to
+    string version = 3 [(validate.rules).string.pattern = "^\\w*\\d+(\\.\\d)*$"];
+    // Don't create a new metadata but install application instance directly from catalog
+    bool from_catalog = 4;
+    // Application instance description
+    string description = 5;
+    // Application type. Supported types:
+    // periodic - application of type "CronJob" will be created, will be scheduled according to
+    // the CyclePeriodic configuration.
+    // daemon - application of type "Deployment" will be created, will be running continuously
+    // run_once - application of type "Job", will run once until success
+    string cycle = 6 [(validate.rules).string = {in: ["periodic", "daemon", "run_once"]}];
+    // Cycle Periodic attributes
+    CyclePeriodicReqAttr cycle_periodic_attr = 7;
+    // Root Group ID
+    string root_group_id = 8;
+    // A list of group ID
+    repeated string group_ids = 9;
+    // Application configuration
+    map<string,string> app_configs = 10;
+    // Application environment variables
+    map<string,string> env_vars = 11;
+    // Secret objects
+    map<string,string> secrets = 12;
+    // Labels
+    map<string,string> labels = 13;
+    // Annotations
+    map<string,string> annotations = 14;
+    // Shared storage size
+    uint32 shared_storage = 15;
+    // Instance specifications
+    Spec spec = 16;
+}
+
+// UpdadeApp implements the logic of UpgradeApp but allows also to update currently running application
+// With the new configuration and if appropriate information is missed in the request, the information will
+// be obtained from one of running instances of a particular application
+message UpdateAppRequest {
+    // Application name.
+    string name = 1 [(validate.rules).string.min_bytes = 1];
+    // Enable or disable the application after update. By default application is disabled
+    AppStateAfterDeployment app_state = 2;
+    // Application version to upgrade to
+    string version = 3 [(validate.rules).string.len = 0];
+    // Don't create a new metadata but install application instance directly from catalog
+    bool from_catalog = 4;
+    // Application instance description
+    string description = 5;
+    // Application type. Supported types:
+    // periodic - application of type "CronJob" will be created, will be scheduled according to
+    // the CyclePeriodic configuration
+    // daemon - application of type "Deployment" will be created, will be running continuously
+    // run_once - application of type "Job", will run once until success.
+    string cycle = 6 [(validate.rules).string = {in: ["periodic", "daemon", "run_once"]}];
+    // Cycle Periodic attributes
+    CyclePeriodicReqAttr cycle_periodic_attr = 7;
+    // Root Group ID
+    string root_group_id = 8;
+    // A list of group ID
+    repeated string group_ids = 9;
+    // Application configuration
+    map<string,string> app_configs = 10;
+    // Application environment variables
+    map<string,string> env_vars = 11;
+    // Secret objects
+    map<string,string> secrets = 12;
+    // Labels
+    map<string,string> labels = 13;
+    // Annotations
+    map<string,string> annotations = 14;
+    // Shared storage size
+    uint32 shared_storage = 15;
+    // Instance specifications.
+    Spec spec = 16;
+}
+
+// GetAppsRequest holds attributes required for obtaining information about
+// appropriate application and related instances
+message GetAppsRequest {
+    // Application name
+    string name = 1;
+    // Application version.
+    // If omitted, controller will provide information about all running application instances
+    string version = 2;
+    // Application type
+    string cycle = 3 [(validate.rules).string = {in: ["periodic", "daemon", "run_once", ""]}];
+    // Root Group ID
+    string root_group_id = 4;
+    // A list of group IDs
+    repeated string group_ids = 5;
+    // Printout a lot of information
+    bool verbose = 6;
+}
+
+// DeleteAppRequest holds attributes required for deleting
+// appropriate application and its related instances
+message DeleteAppRequest {
+    // Application name.
+    string name = 1 [(validate.rules).string.min_bytes = 1];
+    // Application version.
+    string version = 2;
+    // Root Group ID
+    string root_group_id = 3;
+    // A list of group IDs
+    repeated string group_ids = 4;
+    // Indicates whether the app should be also removed from catalog
+    bool purge = 5;
+}
+
+// DeleteAppMetadataRequest holds attributes required for deleting
+// metadata for appropriate application and related instances
+message DeleteAppMetadataRequest {
+    // Application name
+    string app_name = 1 [(validate.rules).string.min_bytes = 1];
+    // Deletes only a particular version of application instance
+    string version = 2;
+    // Root Group ID
+    string root_group_id = 3;
+    // A list of group IDs
+    repeated string group_ids = 4;
+}
+
+// DeleteAppsRequest holds attributes required for removing applications
+// and their related instances.
+message DeleteAppsRequest {
+    // Indicates whether all the apps should be also removed from catalog
+    bool purge = 1;
+}
+
+// EnableDisableAppRequest holds attributes required for disabling or enabling appropriate application instance
+message EnableDisableAppRequest {
+    // Application name
+    string name = 1;
+    // Application version
+    string version = 2;
+    // Root Group ID
+    string root_group_id = 3;
+    // A list of group IDs
+    repeated string group_ids = 4;
+    // Enable or disable application instances
+    bool disable = 5;
+}
+
+// CyclePeriodicReqAttr message holds information for an application of type periodic
+message CyclePeriodicReqAttr {
+    message Sched {
+        bool Saturday = 1;
+        bool Sunday = 2;
+        bool Monday = 3;
+        bool Tuesday = 4;
+        bool Wednesday = 5;
+        bool Thursday = 6;
+        bool Friday = 7;
+    }
+    Sched working_days = 1;
+    uint32 min_start_hour = 2 [(validate.rules).uint32 = { gte: 0,  lte: 23 }];
+    uint32 max_start_hour = 3 [(validate.rules).uint32 = { gte: 0,  lte: 23 }];
+    uint32 interval_min = 4 [(validate.rules).uint32 = { gte: 1, lte: 59 }] ;
+}
+
+// Specification message
+message Spec {
+    // Image structure.
+    message Image {
+        // Repository name.
+        string repo = 1 [(validate.rules).string.min_bytes = 1];
+        // Image tag.
+        string tag = 2 [(validate.rules).string.min_bytes = 1];
+    }
+
+    // Network structure
+    message Port {
+        // Port label.
+        string name = 1[(validate.rules).string.pattern = "(^\\s*$|^[^-.0-9][a-z0-9.-]{1,63}[^-.]$)"];
+        // Port number.
+        uint32 number = 2 [(validate.rules).uint32.lte = 65535];
+        // Protocol ("TCP" or "UDP").
+        enum Proto {
+            TCP = 0;
+            UDP = 1;
+        }
+        Proto proto = 3;
+    }
+
+    message Resources {
+        uint32 persistent_storage = 1;
+        message Limits {
+            uint32 memory = 1;
+            double cpu = 2;
+       }
+       Limits limits = 2;
+    }
+
+    Image image = 1 [(validate.rules).message.required = true];
+    repeated Port ports = 2;
+    Resources resources = 3;
+}
+
+/// Messages used in response ///
+
+// CyclePeriodicRespAttr message holds information for an application of type periodic
+message CyclePeriodicRespAttr {
+    repeated string working_days = 1;
+    uint32 min_start_hour = 2;
+    uint32 max_start_hour = 3;
+    uint32 interval_min = 4;
+}
+
+message PeriodicFields {
+    string schedule = 1;
+    string last_schedule_time = 2;
+    int64 failed_jobs_history_limit = 3;
+    int64 successful_jobs_history_limit = 4;
+}
+
+message RunOnceFields {
+    int64 active = 1;
+    int64 completions = 2;
+    int64 failed = 3;
+    int64 succeeded = 4;
+    string start_time = 5;
+    string completion_time = 6;
+}
+
+message Resources {
+    message Requests {
+        // Memory in MiB
+       uint32 memory = 1;
+       // CPU in millicores
+       double cpu = 2;
+    }
+    message Limits {
+       // Memory in MiB
+       uint32 memory = 1;
+       // CPU in milli cores
+       double cpu = 2;
+    }
+    Requests requests = 1;
+    Limits limits = 2;
+    uint32 persistent_storage = 3;
+}
+
+// Instance message holds information about a particular workload
+message Instance {
+    string name = 1;
+    string id = 2;
+    string version = 3;
+    string root_group_id = 4;
+    string group_id = 5;
+    string state = 6;
+    string cycle = 7;
+    string image_repo = 8;
+    string image_name = 9;
+    string image_tag = 10;
+    oneof CycleFields {
+        PeriodicFields periodic_fields = 11;
+        RunOnceFields run_once_fields = 12;
+    }
+    string create_date = 13;
+    string update_date = 14;
+    string project_id = 15;
+    string namespace = 16;
+    string scale = 17;
+    Resources resources = 18;
+    message Container {
+        string name = 1;
+        string image = 2;
+        string state = 3;
+        message Port {
+            string name = 1;
+            int64 port = 2;
+            string dns_name = 3;
+            string host_ip = 4;
+            string kind = 5;
+            string proto = 6;
+            int64 src_port = 7;
+        }
+        message VolumeMount {
+            string name = 1;
+            string mount_path = 2;
+            bool read_only = 3;
+            string sub_path = 4;
+        }
+        repeated Port ports = 4;
+        repeated VolumeMount vol_mounts = 5;
+    }
+    message PublicEndpoint {
+        repeated string addresses = 1;
+        bool all_nodes = 2;
+        string hostname = 3;
+        string ingress_id = 4;
+        string node_id = 5;
+        string path = 6;
+        string pod_id = 7;
+        int64 port = 8;
+        string proto = 9;
+        string service_id = 10;
+    }
+    repeated Container containers = 19;
+    repeated PublicEndpoint public_endpoints = 20;
+    Template template = 21;
+}
+
+// Template message holds information about metadata for a particular application instance
+message Template {
+    string name = 1;
+    repeated string versions = 2;
+    string catalog_id = 3;
+}
+
+// AppInstance holds information about appropriate application instance
+message AppInstance {
+    string name = 1;
+    string id = 2;
+    string version = 3;
+    string root_group_id = 4;
+    string group_id = 5;
+    Template template = 6;
+}
+
+// App holds information about appropriate application
+message App {
+    string name = 1;
+    string cycle = 2;
+    repeated AppInstance instances = 3;
+}
+
+// Apps holds information about applications
+message Apps {
+    repeated App apps = 1;
+}
+
+// AppInfo holds information about particular application running in the cluster
+message AppInfo {
+    string monitor_url = 1;
+    string logs_url = 2;
+    Resources total_resources = 3;
+    uint32 shared_storage = 4;
+    CyclePeriodicRespAttr cycle_periodic_fields = 5;
+    repeated Instance instances = 6;
+}
+
+// AppsInfo holds information about applications running in the cluster
+message AppsInfo {
+    map<string,AppInfo> apps = 1;
+}
+
+// AppTemplates holds information about metadata related to the instances of a particular application
+message AppTemplates {
+    string app_name = 1;
+    repeated Template templates = 2;
+}
+
+// AppInstanceActivation holds information about appropriate enabled or disabled application instance
+message AffectedAppInstance {
+    string name = 1;
+    string id = 2;
+    string version = 3;
+    string root_group_id = 4;
+    string group_id = 5;
+}
+
+// AffectedAppInstances holds information about application instances
+message AffectedAppInstances {
+    repeated AffectedAppInstance instances = 1;
+}
+
+// AppsActivation holds information about applications affected by EnableDisableApps request
+message AppsActivation {
+    map<string,AffectedAppInstances> apps = 1;
+}
+
+// Status represents operation status.
+enum Status {
+    // Operation was successful
+    SUCCESS = 0;
+    // Operation failed
+    ERROR = 1;
+    // Resource not found
+    NOT_FOUND = 2;
+    // Operation had no results (e.g. upgrade identical, rollback to same, delete non-existent)
+    UNCHANGED = 3;
+}
+
+// Response holds information related to a response message that is sent on appropriate request
+message Response {
+    google.protobuf.Timestamp timestamp = 1 [(validate.rules).timestamp.required = true];
+    Status status = 2;
+    string message = 3;
+    google.protobuf.Any body = 4;
+}
+
+// AppManager service
+service AppManager {
+    // CreateApp method creates a new application.
+    // It will create a new catalog entry and install the new application from the catalog.
+    // If appropriate application instance with the same name and version already running,
+    // the instance won't be overwritten and no error will be returned.The request will continue
+    // to the next instance.If all requested instances already running, the status "UNCHANGED" will be
+    // returned to the caller. A list of created instances will be returned as part of the response body
+    rpc CreateApp (CreateAppRequest) returns (Response) {
+        option (google.api.http) = {
+           post: "/api/v1/apps"
+           body: "*"
+         };
+    }
+
+    // UpgradeApp creates new, upgrades or downgrades existing application.
+    // Application will be recreated if the version in request is equal to the version of running application.
+    // In this case the catalog artifact will be replaced with the new one the running application will be replaced
+    // with recent application from the catalog.
+    // Application will be upgraded if the version in request is higher than version of running application.In this case
+    // a new catalog artifact will be created and the running application will be upgraded from the catalog.
+    // Application will be downgraded if the version in request is lower than version of running application. In this case
+    // a new catalog artifact will be created and the running application will be downgraded from the catalog
+    rpc UpgradeApp (UpgradeAppRequest) returns (Response) {
+        option (google.api.http) = {
+           put: "/api/v1/apps/{name}"
+           body: "*"
+         };
+    }
+
+    // UpdateApp updates existing application instances. The new application instance will be based on configuration
+    // of existing instance hence a minimal request can be sent to controller. If there is no application instance
+    // running, the method will return "UNCHANGED" status and message "Nothing to update/upgrade".
+    // This method always recreates existing application instance
+    rpc UpdateApp (UpdateAppRequest) returns (Response) {
+        option (google.api.http) = {
+           patch: "/api/v1/apps/{name}"
+           body: "*"
+         };
+    }
+
+     // EnableDisableApp disables or enables an application
+     rpc EnableDisableApp (EnableDisableAppRequest) returns (Response) {
+         option (google.api.http) = {
+           post: "/api/v1/apps/activation"
+           body: "*"
+         };
+     }
+
+    // DeleteApp deletes instances of a particular running application.
+    // It's possible to customize the request by providing appropriate body
+    rpc DeleteApp (DeleteAppRequest) returns (Response) {
+        option (google.api.http) = {
+           delete: "/api/v1/apps/{name}"
+           body: "*"
+         };
+    }
+
+    // DeleteApps deletes running applications and related workloads.
+    // If "purge" flag is set True, the applications will be also removed from the catalog
+    rpc DeleteApps (DeleteAppsRequest) returns (Response) {
+        option (google.api.http) = {
+           delete: "/api/v1/apps"
+         };
+    }
+
+    // GetApps shows appropriate information about running application
+    rpc GetApps (GetAppsRequest) returns (Response) {
+        option (google.api.http) = {
+           get: "/api/v1/apps"
+         };
+    }
+
+    // DeleteAppMetadata deletes metadata for a particular application instance
+    rpc DeleteAppMetadata (DeleteAppMetadataRequest) returns (Response) {
+        option (google.api.http) = {
+           delete: "/api/v1/apps/metadata/{app_name}"
+           body: "*"
+         };
+    }
+
+}

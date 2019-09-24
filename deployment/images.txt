@@ -1,0 +1,1 @@
+CONTROLLER_IMAGE=apphoster/controller:1.0.0

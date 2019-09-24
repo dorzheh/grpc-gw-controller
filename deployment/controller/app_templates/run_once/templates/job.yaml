@@ -1,0 +1,121 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "name" . }}
+  namespace: {{ include "namespace" . }}
+  annotations:
+    {{- range $key, $val := .Values.annotations }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+  labels:
+    app: {{ include "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- range $key, $val := .Values.labels }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+spec:
+  template:
+    metadata:
+      annotations:
+        {{- range $key, $val := .Values.annotations }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      labels:
+        {{- range $key, $val := .Values.labels }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+        app: {{ include "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+          containers:
+          - name: {{ include "name" . }}
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.pullPolicy }}
+            ports:
+            {{- range $index, $port := .Values.ports }}
+            - name: {{ $port.name }}
+              containerPort: {{ $port.internalPort}}
+              protocol: {{ $port.protocol }}
+            {{ end -}}
+            {{- if eq .Values.liveness.enabled true }}
+            livenessProbe:
+              tcpSocket:
+                port: {{ .Values.service.internalPort }}
+              initialDelaySeconds: {{ .Values.liveness.initialDelaySeconds }}
+              periodSeconds: {{ .Values.liveness.periodSeconds }}
+            {{ end -}}
+            {{ if eq .Values.readiness.enabled true }}
+            readinessProbe:
+              tcpSocket:
+                port: {{ .Values.service.externalPort }}
+              initialDelaySeconds: {{ .Values.readiness.initialDelaySeconds }}
+              periodSeconds: {{ .Values.readiness.periodSeconds }}
+            {{ end }}
+            env:
+            {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val |quote }}
+            {{- end }}
+            volumeMounts:
+              - name: {{ include "name" . }}-localtime
+                mountPath: /etc/localtime
+                readOnly: true
+              {{- if eq .Values.configs.enabled true }}
+              - name: {{ include "name" . }}-configs
+                mountPath: /opt/app/config/
+                readOnly: true
+              {{- end }}
+              {{- if eq .Values.secrets.enabled true }}
+              - name: {{ include "name" . }}-secrets
+                mountPath: /opt/app/secret/
+                readOnly: true
+              {{- end }}
+              - name: {{ include "fullname" . }}-pv
+                mountPath: /opt/app/storage/instance/
+                readOnly: false
+              - name: {{ include "namespace" . }}-shared-pv
+                mountPath: /opt/app/storage/shared/
+                readOnly: false
+            resources:
+           {{ toYaml .Values.resources | indent 12 }}
+          {{- if .Values.nodeSelector }}
+          nodeSelector:
+          {{ toYaml .Values.nodeSelector | indent 10 }}
+          {{- end -}}
+          {{- if .Values.affinity }}
+          affinity:
+          {{ toYaml .Values.affinity | indent 10 }}
+          {{- end }}
+          volumes:
+            - name: {{ include "name" . }}-localtime
+              hostPath:
+                path: /etc/localtime
+           {{- if eq .Values.configs.enabled true }}
+            - name: {{ include "name" . }}-configs
+              configMap:
+                name: {{ include "name" . }}-configmap
+           {{- end }}
+           {{- if eq .Values.secrets.enabled true }}
+            - name: {{ include "name" . }}-secrets
+              secret:
+                secretName: {{ include "name" . }}-secrets
+           {{- end }}
+            - name: {{ include "name" . }}-pv
+              {{- if eq .Values.persistence.instance.enabled true }}
+              persistentVolumeClaim:
+                claimName: {{ include "name" . }}-pvc
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+            - name: {{ include "namespace" . }}-shared-pv
+              {{- if eq .Values.persistence.shared.enabled true }}
+              persistentVolumeClaim:
+                claimName: {{ include "namespace" . }}-shared-pvc
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+          restartPolicy: {{ .Values.restartPolicy }}
+          imagePullSecrets:
+            - name: "{{ include "namespace" . }}-docker-registry-key"

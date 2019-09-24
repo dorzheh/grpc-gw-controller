@@ -1,0 +1,76 @@
+# Author  <dorzheho@cisco.com>
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ include "fullname" . }}
+  namespace: {{ include "namespace" . }}
+  labels:
+    app: {{ include "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ include "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ include "name" . }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["/opt/cisco/apphc/bin/apphcd"]
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          volumeMounts:
+            - mountPath: /opt/cisco/apphc/config 
+              name: config
+          env:
+           {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val |quote }}
+           {{- end }}
+            - name: APPHC_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: EnvApphcBearerToken
+                  name: {{ include "fullname" . }}-secrets
+            - name: APPHC_ADAPTERS_RANCHER_SERVER_CREDS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: EnvApphcAdaptersRancherServerCredsToken
+                  name: {{ include "fullname" . }}-secrets
+            - name: APPHC_ADAPTERS_RANCHER_CATALOG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: EnvApphcAdaptersRancherCatalogPassword
+                  name: {{ include "fullname" . }}-secrets
+          readinessProbe:
+            tcpSocket:
+              port:  {{ .Values.service.internalPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port:  {{ .Values.service.internalPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 60
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+      imagePullSecrets:
+      - name: "{{ include "fullname" . }}-docker-registry-key"
+      volumes:
+       - name: config
+         configMap:
+           name: {{ include "fullname" . }}-config
