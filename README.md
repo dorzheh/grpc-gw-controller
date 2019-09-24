@@ -4,6 +4,11 @@ gRPC Gateway Controller performs functions to manage the lifecycle of micro-serv
 
 gRPC gateway is the core component of the gRPC Gateway Controller. It helps to provide APIs in both gRPC and RESTful style at the same time.It reads gRPC service definition and generates a reverse-proxy server which translates a RESTful JSON API into gRPC.
 
+Overview
+===========
+
+![Image1](https://github.com/dorzheh/grpc-gw-controller/blob/master/arch/grpc-gw-controller.png)
+
 Extending Controller functionality
 =====================================
 
